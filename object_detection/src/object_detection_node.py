@@ -20,7 +20,7 @@ from object_detection_msgs.msg import (
 )
 from std_msgs.msg import Header
 
-from object_detection.objectdetector import ObjectDetector
+from object_detection.objectdetectorONNX import ObjectDetectorONNX
 from object_detection.pointprojector import PointProjector
 from object_detection.objectlocalizer import ObjectLocalizer
 from object_detection.utils import *
@@ -126,7 +126,7 @@ class ObjectDetectionNode(Node):
         self.point_projector = PointProjector(self, join(self.config_dir, project_cfg))
 
         # ---------- Setup 2D Object Detection ----------
-        self.object_detector = ObjectDetector(
+        self.object_detector = ObjectDetectorONNX(
             {
                 "architecture": self.get_parameter("architecture").value,
                 "model": self.get_parameter("model").value,
@@ -304,13 +304,18 @@ class ObjectDetectionNode(Node):
 
                 # Create detection info
                 object_information = ObjectDetectionInfo()
-                object_information.class_id = object_detection_result["name"][i]
-                object_information.id = obj.id
+                object_information.class_id = str(
+                    object_detection_result["name"][i]
+                )  # Ensure string
+                object_information.id = int(obj.id)  # Ensure integer
+
                 object_information.position.x = float(obj.pos[0])
                 object_information.position.y = float(obj.pos[1])
                 object_information.position.z = float(obj.pos[2])
-                object_information.pose_estimation_type = obj.estimation_type
-                object_information.confidence = object_detection_result["confidence"][i]
+                object_information.pose_estimation_type = str(obj.estimation_type)
+                object_information.confidence = float(
+                    object_detection_result["confidence"][i]
+                )
                 object_information.bounding_box_min_x = int(
                     object_detection_result["xmin"][i]
                 )
