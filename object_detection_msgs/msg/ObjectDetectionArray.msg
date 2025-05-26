@@ -1,0 +1,6 @@
+std_msgs/Header header
+
+sensor_msgs/PointCloud2 pointcloud_in_frame_2d
+sensor_msgs/PointCloud2 pointcloud_in_frame_3d
+sensor_msgs/Image detections_image
+ObjectDetection[] detections
