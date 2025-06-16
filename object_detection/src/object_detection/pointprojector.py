@@ -69,6 +69,7 @@ class PointProjector:
         """Transform points from lidar to camera frame"""
         homo_coor = np.ones(points.shape[0])
         XYZ = np.vstack((np.transpose(points), homo_coor))
+        self.logger.info(f"Transformed points shape: {XYZ.shape}")
         XYZ = self.T @ XYZ
         XYZ = XYZ / XYZ[3, :]
         return np.transpose(XYZ[:3, :])

@@ -31,7 +31,7 @@ install(PROGRAMS
 install(DIRECTORY 
   launch 
   cfg 
-  rviz
+  # rviz
   models
   DESTINATION share/${PROJECT_NAME}
 )
