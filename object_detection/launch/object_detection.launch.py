@@ -19,7 +19,7 @@ def generate_launch_description():
     declared_arguments = [
         DeclareLaunchArgument(
             "smb_name",
-            default_value=EnvironmentVariable("SMB_NAME", default_value="smb261"),
+            default_value=EnvironmentVariable("ROBOT_ID", default_value="sim"),
             description="Name of the SMB in the format smb26x (relevant for calibrations)",
         ),
         DeclareLaunchArgument(
