@@ -24,7 +24,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "gpu",
-            default_value="off",
+            default_value="local",
             description="Run on GPU? Options: 'local', 'remote' (default), 'off'",
             choices=["local", "remote", "off"],
         ),
@@ -68,6 +68,27 @@ def generate_launch_description():
         ),
     ]
 
+    # Debayer the image (conditionally included)
+    debayer_image_group = GroupAction(
+    [
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("object_detection"),
+                        "launch",
+                        "debayer.launch.py",
+                    ]
+                )
+            ),
+            condition=IfCondition(LaunchConfiguration("debayer_image")),
+            launch_arguments=[
+                ("input_camera_name", LaunchConfiguration("input_camera_name"))
+            ],
+        )
+    ]
+)
+
     # Object detection node
 
     object_detection_group = GroupAction(
@@ -81,7 +102,7 @@ def generate_launch_description():
                     # Input related
                     {
                         "camera_topic": PathJoinSubstitution(
-                            [LaunchConfiguration("input_camera_name"), "image_raw"]
+                            [LaunchConfiguration("input_camera_name"), "image_debayered"]
                         )
                     },
                     {
@@ -113,7 +134,7 @@ def generate_launch_description():
                     {"model_dir_path": LaunchConfiguration("model_dir_path")},
                     {"device": "0" if LaunchConfiguration("gpu") != "off" else "cpu"},
                     {"confident": 0.0},
-                    {"iou": 0.0},
+                    {"iou": 0.1},
                     {"classes": LaunchConfiguration("object_detection_classes")},
                     {"multiple_instance": False},
                     # Object localization related
@@ -126,5 +147,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(
-        declared_arguments + [object_detection_group]
+        declared_arguments + [debayer_image_group, object_detection_group]
     )
