@@ -40,7 +40,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "debayer_image",
-            default_value="false",
+            default_value="true",
             description="Debayer the images (supplied in $input_camera_name/image_raw)",
         ),
         DeclareLaunchArgument(
@@ -70,24 +70,24 @@ def generate_launch_description():
 
     # Debayer the image (conditionally included)
     debayer_image_group = GroupAction(
-    [
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                PathJoinSubstitution(
-                    [
-                        FindPackageShare("object_detection"),
-                        "launch",
-                        "debayer.launch.py",
-                    ]
-                )
-            ),
-            condition=IfCondition(LaunchConfiguration("debayer_image")),
-            launch_arguments=[
-                ("input_camera_name", LaunchConfiguration("input_camera_name"))
-            ],
-        )
-    ]
-)
+        [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare("object_detection"),
+                            "launch",
+                            "debayer.launch.py",
+                        ]
+                    )
+                ),
+                condition=IfCondition(LaunchConfiguration("debayer_image")),
+                launch_arguments={
+                    "input_camera_name": LaunchConfiguration("input_camera_name")
+                },
+            )
+        ]
+    )
 
     # Object detection node
 
@@ -102,7 +102,7 @@ def generate_launch_description():
                     # Input related
                     {
                         "camera_topic": PathJoinSubstitution(
-                            [LaunchConfiguration("input_camera_name"), "image_debayered"]
+                            [LaunchConfiguration("input_camera_name"), "image_raw"]
                         )
                     },
                     {
