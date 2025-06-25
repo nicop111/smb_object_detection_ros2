@@ -56,7 +56,7 @@ class CameraToWorldNode(Node):
         super().__init__('camera_to_world_transform')
 
         # Parameters
-        self.declare_parameter('camera_to_base_translation', [0.0, 0.0, 0.0])
+        self.declare_parameter('camera_to_base_translation', [0.273, -0.046, -0.272]) # t_camera_lidar : [-0.046, -0.272, -0.273] invert homogeneous transformation: [0.273, -0.046, -0.272]
         self.declare_parameter('camera_to_base_rotation', [ 0.5, -0.5, 0.5, -0.5 ])
         self.declare_parameter('robot_base_frame', 'base_link')
         self.declare_parameter('world_frame', 'odom')
