@@ -147,5 +147,11 @@ def generate_launch_description():
     )
 
     return LaunchDescription(
-        declared_arguments + [debayer_image_group, object_detection_group]
+        declared_arguments + [debayer_image_group, object_detection_group]+ [Node(
+                package="object_detection",
+                executable="object_transformation_node.py",
+                name="object_transform",
+                output="screen",
+                parameters=[]
+            )]
     )
