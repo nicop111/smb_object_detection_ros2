@@ -79,18 +79,45 @@ class CameraToWorldNode(Node):
             self.tf_callback,
             10
         )
+        
+        # Subscribe to detection info
+        self.detection_info_sub = self.create_subscription(
+            ObjectDetectionInfoArray,
+            '/detection_info',
+            self.detection_info_callback,
+            10
+        )
 
         # Publisher
         self.obj_world_pub = self.create_publisher(PoseArray, 'object_world_poses', 10)
+        
+        # Publisher for transformed detection info
+        self.detection_info_world_pub = self.create_publisher(
+            ObjectDetectionInfoArray, 
+            'detection_info_world', 
+            10
+        )
 
         # State
         self.last_obj_array = None
         self.last_base2world = None
+        self.last_detection_info = None
 
     def object_callback(self, msg: PoseArray):
         self.get_logger().debug(f'Received PoseArray with {len(msg.poses)} poses; header.frame_id={msg.header.frame_id}')
         self.last_obj_array = msg
         self.try_transform()
+
+    def detection_info_callback(self, msg: ObjectDetectionInfoArray):
+        self.get_logger().debug(f'Received ObjectDetectionInfoArray with {len(msg.info)} detections')
+        self.last_detection_info = msg
+        # Log some details about the detected objects
+        for i, detection in enumerate(msg.info):
+            self.get_logger().debug(f'Detection {i}: class={detection.class_id}, id={detection.id}, '
+                                   f'confidence={detection.confidence:.2f}, '
+                                   f'bbox=({detection.bounding_box_min_x}, {detection.bounding_box_min_y}, '
+                                   f'{detection.bounding_box_max_x}, {detection.bounding_box_max_y}), '
+                                   f'position=({detection.position.x:.2f}, {detection.position.y:.2f}, {detection.position.z:.2f})')
 
     def tf_callback(self, msg: TFMessage):
         for t in msg.transforms:
@@ -138,9 +165,42 @@ class CameraToWorldNode(Node):
         self.obj_world_pub.publish(world_array)
         self.get_logger().info(f'Published transformed PoseArray with {len(world_array.poses)} poses')
 
+        # Transform and publish detection info if available
+        if self.last_detection_info is not None:
+            self.publish_transformed_detection_info(T_base2world)
+
         # Optionally reset state
         # self.last_obj_array = None
         # self.last_base2world = None
+
+    def publish_transformed_detection_info(self, T_base2world):
+        self.get_logger().info(f'Transforming detection info with {len(self.last_detection_info.info)} detections')
+
+        transformed_info = ObjectDetectionInfoArray()
+        transformed_info.header.stamp = self.get_clock().now().to_msg()
+        transformed_info.header.frame_id = self.world_frame
+
+        for idx, info in enumerate(self.last_detection_info.info):
+            # Transform the position
+            p_cam = np.array([info.position.x, info.position.y, info.position.z, 1.0])
+            p_world = T_base2world @ self.T_cam2base @ p_cam
+
+            new_info = ObjectDetectionInfo()
+            new_info.id = info.id
+            new_info.class_id = info.class_id
+            new_info.confidence = info.confidence
+            new_info.bounding_box_min_x = info.bounding_box_min_x
+            new_info.bounding_box_min_y = info.bounding_box_min_y
+            new_info.bounding_box_max_x = info.bounding_box_max_x
+            new_info.bounding_box_max_y = info.bounding_box_max_y
+            new_info.position.x, new_info.position.y, new_info.position.z = p_world[:3]
+            new_info.pose_estimation_type = info.pose_estimation_type
+            transformed_info.info.append(new_info)
+            self.get_logger().debug(f'Detection {idx}: transformed cam=({info.position.x:.2f}, {info.position.y:.2f}, {info.position.z:.2f}) -> '
+                                     f'world=({p_world[0]:.2f}, {p_world[1]:.2f}, {p_world[2]:.2f})')
+
+        self.detection_info_world_pub.publish(transformed_info)
+        self.get_logger().info(f'Published transformed ObjectDetectionInfoArray with {len(transformed_info.info)} detections')
 
 
 def main(args=None):
