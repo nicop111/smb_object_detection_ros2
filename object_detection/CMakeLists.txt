@@ -24,6 +24,7 @@ install(DIRECTORY src/object_detection
 # Install Python executables
 install(PROGRAMS
   src/object_detection_node.py
+  src/object_transformation_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
