@@ -1,3 +1,9 @@
+Do this 
+
+chmod +x /smb_ros2_workspace/src/perception/smb_object_detection/object_detection/src/object_transformation_node.py
+
+
+
 # Multimodal Object Detection and Mapping
 
 This package enables detection and localization of objects using camera and lidar inputs. Object detections in 2D images are mapped to lidar scans to retreive the 3D object postions to scale.
