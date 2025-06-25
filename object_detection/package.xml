@@ -20,6 +20,7 @@
   <depend>cv_bridge</depend>
   <depend>message_filters</depend>
   <depend>tf2_msgs</depend>
+  <depend>nav_msgs</depend>
 
 
   <export>

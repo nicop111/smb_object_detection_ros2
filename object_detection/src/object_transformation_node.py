@@ -21,6 +21,7 @@ from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo, PointField
 from geometry_msgs.msg import PoseArray, Pose, Quaternion
+from nav_msgs.msg import Odometry
 
 from object_detection_msgs.msg import (
     PointCloudArray,
@@ -88,13 +89,13 @@ class CameraToWorldNode(Node):
             self.object_callback,
             10
         )
-        self.tf_sub = self.create_subscription(
-            TFMessage,
-            '/tf',
-            self.tf_callback,
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/state_estimation',
+            self.odom_callback,
             10
         )
-        
+
         # Subscribe to detection info
         self.detection_info_sub = self.create_subscription(
             ObjectDetectionInfoArray,
@@ -123,6 +124,20 @@ class CameraToWorldNode(Node):
         self.last_obj_array = msg
         self.try_transform()
 
+    def odom_callback(self, msg: Odometry):
+        # extract the robot's pose in the world frame
+        tr = msg.pose.pose.position
+        rot = msg.pose.pose.orientation
+        self.last_base2world = (
+            [tr.x, tr.y, tr.z],
+            [rot.x, rot.y, rot.z, rot.w]
+        )
+        self.get_logger().debug(
+            f'Got Odom /odom: translation={self.last_base2world[0]}, '
+            f'rotation={self.last_base2world[1]}'
+        )
+
+
     def detection_info_callback(self, msg: ObjectDetectionInfoArray):
         self.get_logger().debug(f'Received ObjectDetectionInfoArray with {len(msg.info)} detections')
         self.last_detection_info = msg
@@ -134,19 +149,19 @@ class CameraToWorldNode(Node):
                                    f'{detection.bounding_box_max_x}, {detection.bounding_box_max_y}), '
                                    f'position=({detection.position.x:.2f}, {detection.position.y:.2f}, {detection.position.z:.2f})')
 
-    def tf_callback(self, msg: TFMessage):
-        for t in msg.transforms:
-            if t.header.frame_id == self.world_frame and t.child_frame_id == self.base_frame:
-                tr = t.transform.translation
-                rot = t.transform.rotation
-                self.last_base2world = ([tr.x, tr.y, tr.z], [rot.x, rot.y, rot.z, rot.w])
-                self.get_logger().debug(
-                    f'Got TF {self.world_frame} -> {self.base_frame}:'
-                    f' translation={self.last_base2world[0]}'
-                    f' rotation={self.last_base2world[1]}'
-                )
-                break
-        # Only store TF data, don't trigger transform here
+    # def tf_callback(self, msg: TFMessage):
+    #     for t in msg.transforms:
+    #         if t.header.frame_id == self.world_frame and t.child_frame_id == self.base_frame:
+    #             tr = t.transform.translation
+    #             rot = t.transform.rotation
+    #             self.last_base2world = ([tr.x, tr.y, tr.z], [rot.x, rot.y, rot.z, rot.w])
+    #             self.get_logger().debug(
+    #                 f'Got TF {self.world_frame} -> {self.base_frame}:'
+    #                 f' translation={self.last_base2world[0]}'
+    #                 f' rotation={self.last_base2world[1]}'
+    #             )
+    #             break
+    #     # Only store TF data, don't trigger transform here
 
     def try_transform(self):
         if self.last_obj_array is None:
