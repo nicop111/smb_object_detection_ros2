@@ -13,6 +13,8 @@ import numpy as np
 from sensor_msgs_py import point_cloud2
 import time
 import cv2
+import csv
+import os
 from os.path import join
 from numpy.lib.recfunctions import unstructured_to_structured
 from cv_bridge import CvBridge
@@ -60,11 +62,24 @@ class CameraToWorldNode(Node):
         self.declare_parameter('camera_to_base_rotation', [ 0.5, -0.5, 0.5, -0.5 ])
         self.declare_parameter('robot_base_frame', 'base_link')
         self.declare_parameter('world_frame', 'odom')
+        self.declare_parameter('csv_output_file', '/smb_ros2_workspace/data/object_detections.csv')
         trans = self.get_parameter('camera_to_base_translation').value
         rot = self.get_parameter('camera_to_base_rotation').value
         self.base_frame = self.get_parameter('robot_base_frame').value
         self.world_frame = self.get_parameter('world_frame').value
+        
+        # Create timestamped CSV filename
+        base_csv_path = self.get_parameter('csv_output_file').value
+        timestamp_str = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        csv_dir = os.path.dirname(base_csv_path)
+        csv_basename = os.path.splitext(os.path.basename(base_csv_path))[0]
+        csv_extension = os.path.splitext(os.path.basename(base_csv_path))[1]
+        self.csv_file_path = os.path.join(csv_dir, f"{csv_basename}_{timestamp_str}{csv_extension}")
+        
         self.T_cam2base = transform_matrix(trans, rot)
+
+        # Initialize CSV file
+        self.initialize_csv_file()
 
         # Subscribers
         self.obj_sub = self.create_subscription(
@@ -201,6 +216,47 @@ class CameraToWorldNode(Node):
 
         self.detection_info_world_pub.publish(transformed_info)
         self.get_logger().info(f'Published transformed ObjectDetectionInfoArray with {len(transformed_info.info)} detections')
+        
+        # Write detections to CSV file
+        self.write_detections_to_csv(transformed_info)
+
+    def initialize_csv_file(self):
+        """Initialize the CSV file with headers if it doesn't exist."""
+        # Ensure the directory exists
+        csv_dir = os.path.dirname(self.csv_file_path)
+        if csv_dir and not os.path.exists(csv_dir):
+            os.makedirs(csv_dir, exist_ok=True)
+            self.get_logger().info(f'Created directory: {csv_dir}')
+        
+        if not os.path.exists(self.csv_file_path):
+            with open(self.csv_file_path, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['time', 'object_type', 'x', 'y', 'z', 'confidence'])
+            self.get_logger().info(f'Created CSV file: {self.csv_file_path}')
+        else:
+            self.get_logger().info(f'Using existing CSV file: {self.csv_file_path}')
+
+    def write_detections_to_csv(self, transformed_info):
+        """Write object detections to CSV file."""
+        try:
+            with open(self.csv_file_path, 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                timestamp = time.time()  # Unix timestamp
+                
+                for detection in transformed_info.info:
+                    writer.writerow([
+                        timestamp,
+                        detection.class_id,
+                        detection.position.x,
+                        detection.position.y,
+                        detection.position.z,
+                        detection.confidence
+                    ])
+            
+            self.get_logger().debug(f'Wrote {len(transformed_info.info)} detections to CSV')
+            
+        except Exception as e:
+            self.get_logger().error(f'Failed to write to CSV file: {e}')
 
 
 def main(args=None):
