@@ -104,7 +104,7 @@ class CameraToWorldNode(Node):
                     f' rotation={self.last_base2world[1]}'
                 )
                 break
-        self.try_transform()
+        # Only store TF data, don't trigger transform here
 
     def try_transform(self):
         if self.last_obj_array is None:
