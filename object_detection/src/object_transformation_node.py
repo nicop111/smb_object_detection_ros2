@@ -21,7 +21,7 @@ from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo, PointField
 from geometry_msgs.msg import PoseArray, Pose, Quaternion
-from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
 
 from object_detection_msgs.msg import (
     PointCloudArray,
@@ -90,9 +90,9 @@ class CameraToWorldNode(Node):
             10
         )
         self.odom_sub = self.create_subscription(
-            Odometry,
+            PoseStamped,
             '/state_estimation',
-            self.odom_callback,
+            self.pose_callback,
             10
         )
 
@@ -124,16 +124,16 @@ class CameraToWorldNode(Node):
         self.last_obj_array = msg
         self.try_transform()
 
-    def odom_callback(self, msg: Odometry):
+    def pose_callback(self, msg: PoseStamped):
         # extract the robot's pose in the world frame
-        tr = msg.pose.pose.position
-        rot = msg.pose.pose.orientation
+        tr = msg.pose.position
+        rot = msg.pose.orientation
         self.last_base2world = (
             [tr.x, tr.y, tr.z],
             [rot.x, rot.y, rot.z, rot.w]
         )
         self.get_logger().debug(
-            f'Got Odom /odom: translation={self.last_base2world[0]}, '
+            f'Got PoseStamped: translation={self.last_base2world[0]}, '
             f'rotation={self.last_base2world[1]}'
         )
 
